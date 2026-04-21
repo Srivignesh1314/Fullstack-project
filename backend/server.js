@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/data', attendanceRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)

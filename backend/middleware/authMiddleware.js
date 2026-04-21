@@ -7,8 +7,6 @@ const protect = (req, res, next) => {
         try {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            
-            // Assuming we only need standard authentication
             req.user = decoded;
             return next();
         } catch (error) {
@@ -22,4 +20,12 @@ const protect = (req, res, next) => {
     }
 };
 
-module.exports = { protect };
+// Only allows users with role 'admin'
+const adminOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        return next();
+    }
+    return res.status(403).json({ message: 'Access denied. Admins only.' });
+};
+
+module.exports = { protect, adminOnly };

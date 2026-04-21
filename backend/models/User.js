@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     department: {
         type: String,
         enum: ['CSE', 'EEE', 'ECE', 'CIVIL'],
-        required: true
+        required: function () { return this.role !== 'admin'; }
     }
 }, { timestamps: true });
 

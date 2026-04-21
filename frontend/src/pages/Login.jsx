@@ -1,53 +1,96 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { FiMail, FiLock } from 'react-icons/fi';
+import { FiMail, FiLock, FiShield } from 'react-icons/fi';
 
 const Login = () => {
-    const [role, setRole] = useState('faculty'); // 'faculty' or 'student'
-    const [identifier, setIdentifier] = useState(''); // username or rollNumber
+    const [role, setRole] = useState('faculty'); // 'faculty' | 'student' | 'admin'
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    const handleRoleSwitch = (newRole) => {
+        setRole(newRole);
+        setIdentifier('');
+        setError('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
         try {
-            const endpoint = role === 'faculty' ? '/auth/login' : '/auth/student-login';
-            const payload = role === 'faculty' 
-                ? { username: identifier, password } 
-                : { rollNumber: identifier, password };
-                
+            let endpoint, payload;
+            if (role === 'student') {
+                endpoint = '/auth/student-login';
+                payload = { rollNumber: identifier, password };
+            } else {
+                // faculty and admin both use the same User model login
+                endpoint = '/auth/login';
+                payload = { username: identifier, password };
+            }
+
             const { data } = await api.post(endpoint, payload);
             localStorage.setItem('userInfo', JSON.stringify(data));
-            navigate('/dashboard');
+
+            if (data.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Invalid credentials');
         }
     };
 
+    const tabs = [
+        { id: 'faculty', label: 'Faculty' },
+        { id: 'student', label: 'Student' },
+        { id: 'admin', label: 'Admin' },
+    ];
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
             <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-xl">
                 <div className="text-center">
-                    <h2 className="text-3xl font-extrabold text-slate-900">Welcome Back</h2>
-                    <p className="mt-2 text-sm text-slate-500">Sign in to manage attendances</p>
+                    {role === 'admin' ? (
+                        <div className="flex justify-center mb-2">
+                            <div className="p-3 bg-indigo-100 rounded-full">
+                                <FiShield className="text-indigo-600 w-7 h-7" />
+                            </div>
+                        </div>
+                    ) : null}
+                    <h2 className="text-3xl font-extrabold text-slate-900">
+                        {role === 'admin' ? 'Admin Login' : 'Welcome Back'}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                        {role === 'admin'
+                            ? 'Sign in to manage teachers & students'
+                            : 'Sign in to manage attendances'}
+                    </p>
                 </div>
-                {error && <div className="p-3 text-sm text-red-600 bg-red-100 rounded-lg">{error}</div>}
-                
+
+                {error && (
+                    <div className="p-3 text-sm text-red-600 bg-red-100 rounded-lg">{error}</div>
+                )}
+
+                {/* Role Tab Switcher */}
                 <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
-                    <button 
-                        onClick={() => { setRole('faculty'); setIdentifier(''); }}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${role === 'faculty' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Faculty
-                    </button>
-                    <button 
-                        onClick={() => { setRole('student'); setIdentifier(''); }}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${role === 'student' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Student
-                    </button>
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => handleRoleSwitch(tab.id)}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                                role === tab.id
+                                    ? tab.id === 'admin'
+                                        ? 'bg-white shadow-sm text-indigo-600'
+                                        : 'bg-white shadow-sm text-blue-600'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -61,7 +104,13 @@ const Login = () => {
                                 type="text"
                                 required
                                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-slate-50"
-                                placeholder={role === 'faculty' ? "Username" : "Roll Number (AP24...)"}
+                                placeholder={
+                                    role === 'faculty'
+                                        ? 'Username'
+                                        : role === 'student'
+                                        ? 'Roll Number (AP24...)'
+                                        : 'Admin Username'
+                                }
                                 value={identifier}
                                 onChange={(e) => setIdentifier(e.target.value)}
                             />
@@ -84,17 +133,26 @@ const Login = () => {
 
                     <button
                         type="submit"
-                        className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            role === 'admin'
+                                ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                                : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                        }`}
                     >
                         Sign in
                     </button>
-                    
-                    <div className="text-sm text-center">
-                        <span className="text-slate-500">Don't have an account? </span>
-                        <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                            Register here
-                        </Link>
-                    </div>
+
+                    {role !== 'admin' && (
+                        <div className="text-sm text-center">
+                            <span className="text-slate-500">Don't have an account? </span>
+                            <Link
+                                to="/register"
+                                className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                            >
+                                Register here
+                            </Link>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>
